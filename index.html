@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIMULASI</title>
+    <link rel="stylesheet" href="bootstrap-5.3.1-dist/css/bootstrap.css">
+    <link rel="stylesheet" href="datatables.css">
+    <link rel="stylesheet" href="DataTables-1.13.6/js/dataTables.bootstrap.js" />
+    <style>
+        .nowrap {
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="m-4">
+        <h3 class="text-center">Perhitungan Ambang Batas Minimum Tabungan</h3>
+        <form id="form">
+            <div class="row mt-4 mb-4">
+                <div class="col-3">
+                    <label for="inputTabungan" class="form-label">Tabungan</label>
+                    <input type="number" class="form-control" id="inputTabungan" placeholder="Masukkan sisa tabungan sekarang" min="0" value="0" step="any" required>
+                </div>
+                <div class="col-3">
+                    <label for="inputGaji" class="form-label">Gaji / bulan</label>
+                    <input type="number" class="form-control" id="inputGaji" placeholder="Masukkan gaji perbulan" min="0" value="0" step="any" required>
+                </div>
+                <div class="col-3">
+                    <label for="inputPengeluaran" class="form-label">Pengeluaran / bulan</label>
+                    <input type="number" class="form-control" id="inputPengeluaran" placeholder="Masukkan pengeluaran perbulan" min="0" value="0" step="any" required>
+                </div>
+                <div class="col-3">
+                    <!-- <button class="btn btn-success btn-block">Set</button> -->
+                    <div class="d-grid">
+                        <label class="form-label" style="visibility: hidden !important;">X</label>
+                        <input id="setBtn" value="Set" class="btn btn-success" type="submit" />
+                    </div>
+                </div>
+            </div>
+        </form>
+        <table id="target" class="table table-bordered table-hover table-striped w-100"></table>
+    </div>
+</body>
+<script src="jQuery-3.7.0//jquery-3.7.0.js"></script>
+<script src="bootstrap-5.3.1-dist/js/bootstrap.bundle.js"></script>
+<script src="datatables.js"></script>
+<script src="DataTables-1.13.6/js/dataTables.bootstrap5.js"></script>
+<script>
+    // define
+    let grid
+    const listBulan = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
+    const startingMonthSeq = new Date().getMonth() + 1
+    const minTahun = new Date().getFullYear()
+    console.log(new Date().getMonth());
+    const maxTahun = 2040
+    let listTahun = []
+    for (let index = minTahun; index <= maxTahun; index++) {
+        listTahun.push(index)
+    }
+
+    // event handlers
+    $("#form").on("submit", function (e) {
+        e.preventDefault();
+        const tabungan = parseFloat($('#inputTabungan').val())
+        const gaji = parseFloat($('#inputGaji').val())
+        const pengeluaran = parseFloat($('#inputPengeluaran').val())
+        const listData = initData(tabungan, gaji, pengeluaran)
+        initTable(listData)
+    })
+
+    // functions
+    const initData = (tabungan = 0, gaji = 0, pengeluaran = 0) => {
+        const listData = []
+        // let sisa = tabungan - pengeluaran
+        listTahun.map((tahun, idxTahun) => {
+            listBulan.map((bulan, idxBulan) => {
+                // tabungan = tabungan + gaji
+                listData.push(
+                    {
+                        desc: `${bulan} ${tahun}`,
+                        gaji, 
+                        tabungan, 
+                        pengeluaran
+                    }
+                )
+            })
+        })
+        for (let index = 1; index < startingMonthSeq; index++) {
+            listData.shift();
+        }
+        listData.map((list, idx) => { 
+            if (idx == 0) {
+                list.tabungan = list.tabungan - gaji
+                list.tab_gaji = list.tabungan + gaji
+                list.pengeluaran = 0
+                list.sisa = list.tab_gaji - 0
+            } else {
+                list.tabungan = listData[idx - 1].sisa
+                list.tab_gaji = list.tabungan + gaji
+                list.sisa = listData[idx - 1].sisa + gaji - pengeluaran
+            }
+        })
+        // console.log(listData);
+        return listData
+    }
+
+    const initTable = (listData) => {
+        if (grid != null) {
+            $('#target').DataTable().destroy();
+        }
+        grid = $('#target').DataTable({
+            responsive: false,
+            // searchDelay: 1000,
+            processing: false,
+            serverSide: false,
+            lengthChange: true,
+            ordering: false,
+            paging: true,
+            scrollX: true,
+            data: listData, 
+            order: [
+                // [1, 'asc']
+            ],
+            columns: [
+                { data: "desc", title: "Bulan", className: "text-wrap" }, 
+                { data: "tabungan", title: "Sisa Tabungan", render: $.fn.dataTable.render.number(',', '.', 2, 'Rp '), className: 'text-end nowrap' }, 
+                { data: "gaji", title: "Gaji", render: $.fn.dataTable.render.number(',', '.', 2, 'Rp '), className: 'text-end' }, 
+                { data: "tab_gaji", title: "Sisa Tabungan + Gaji", render: $.fn.dataTable.render.number(',', '.', 2, 'Rp '), className: 'text-end' }, 
+                { data: "pengeluaran", title: "Pengeluaran", render: $.fn.dataTable.render.number(',', '.', 2, 'Rp '), className: 'text-end' }, 
+                { data: "sisa", title: "Sisa / Batas Min. Tabungan per Tgl 24", render: $.fn.dataTable.render.number(',', '.', 2, 'Rp '), className: 'text-end' }, 
+                // { data: "tabungan", title: "Tabungan", render: $.fn.dataTable.render.number(',', '.', 2, 'Rp '), className: 'text-end' },
+            ],
+        })
+    }
+
+    $(function () {
+        initTable(initData())
+    })
+</script>
+</html>
